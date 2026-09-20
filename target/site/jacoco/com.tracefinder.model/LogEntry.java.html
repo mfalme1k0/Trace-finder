@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogEntry.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Trace-finder</a> &gt; <a href="index.source.html" class="el_package">com.tracefinder.model</a> &gt; <span class="el_source">LogEntry.java</span></div><h1>LogEntry.java</h1><pre class="source lang-java linenums">package com.tracefinder.model;
+
+import java.time.LocalDateTime;
+
+/**
+ * A single, successfully parsed log entry.
+ * Immutable: once built, its fields never change.
+ */
+public class LogEntry {
+    private final LocalDateTime timestamp;
+    private final String level;
+    private final String sourceIp;
+    private final String target;
+    private final String action;
+    private final String rawLine; // original text, needed verbatim for the report
+    private final int lineNumber; // 1-indexed position in the original file
+
+    public LogEntry(LocalDateTime timestamp, String level, String sourceIp,
+<span class="fc" id="L19">                    String target, String action, String rawLine, int lineNumber) {</span>
+<span class="fc" id="L20">        this.timestamp = timestamp;</span>
+<span class="fc" id="L21">        this.level = level;</span>
+<span class="fc" id="L22">        this.sourceIp = sourceIp;</span>
+<span class="fc" id="L23">        this.target = target;</span>
+<span class="fc" id="L24">        this.action = action;</span>
+<span class="fc" id="L25">        this.rawLine = rawLine;</span>
+<span class="fc" id="L26">        this.lineNumber = lineNumber;</span>
+<span class="fc" id="L27">    }</span>
+
+<span class="fc" id="L29">    public LocalDateTime getTimestamp() { return timestamp; }</span>
+<span class="fc" id="L30">    public String getLevel() { return level; }</span>
+<span class="fc" id="L31">    public String getSourceIp() { return sourceIp; }</span>
+<span class="nc" id="L32">    public String getTarget() { return target; }</span>
+<span class="nc" id="L33">    public String getAction() { return action; }</span>
+<span class="fc" id="L34">    public String getRawLine() { return rawLine; }</span>
+<span class="fc" id="L35">    public int getLineNumber() { return lineNumber; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
