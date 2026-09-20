@@ -33,10 +33,7 @@ public class Main {
 
     private static void run(String[] args) throws FatalErrorException {
         if (args.length != 3 && args.length != 5) {
-            throw new FatalErrorException(
-                    "Expected 3 arguments (log file, rulebook file, report file) "
-                            + "or 5 arguments (the same three, plus a start and end timestamp "
-                            + "for a time window), got " + args.length);
+            throw new InvalidArgumentCountException(args.length);
         }
 
         Path logPath = Path.of(args[0]);
@@ -65,8 +62,7 @@ public class Main {
         LocalDateTime end = parseTimestampArg(endArg, "end");
 
         if (start.isAfter(end)) {
-            throw new FatalErrorException(
-                    "Start timestamp '" + startArg + "' must not be after end timestamp '" + endArg + "'");
+            throw new InvalidTimeWindowException(startArg, endArg);
         }
 
         return new TimeWindow(start, end);
@@ -76,9 +72,7 @@ public class Main {
         try {
             return LocalDateTime.parse(value, TimestampFormats.LOG_TIMESTAMP_FORMAT);
         } catch (DateTimeParseException e) {
-            throw new FatalErrorException(
-                    "Could not read " + label + " timestamp '" + value
-                            + "'; expected format yyyy-MM-dd HH:mm:ss");
+            throw new InvalidTimestampException(label, value);
         }
     }
 
@@ -89,9 +83,7 @@ public class Main {
             return new RulebookLoader().loadFromFile(rulebookPath);
 
         } catch (RulebookException | IOException e) {
-            throw new FatalErrorException(
-                    "Could not load rulebook '" + rulebookPath + "': " + e.getMessage()
-            );
+            throw new RulebookLoadFailedException(rulebookPath, e);
         }
     }
 
@@ -99,7 +91,7 @@ public class Main {
         try {
             return Files.readAllLines(logPath);
         } catch (IOException e) {
-            throw new FatalErrorException("Could not read log file '" + logPath + "': " + e.getMessage());
+            throw new LogFileReadException(logPath, e);
         }
     }
 
@@ -107,7 +99,7 @@ public class Main {
         try {
             new ReportWriter().write(reportText, reportPath);
         } catch (IOException e) {
-            throw new FatalErrorException("Could not write report to '" + reportPath + "': " + e.getMessage());
+            throw new ReportWriteException(reportPath, e);
         }
     }
 }
