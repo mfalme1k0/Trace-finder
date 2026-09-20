@@ -1,4 +1,4 @@
-package com.tracefinder.rulebook;
+package com.tracefinder;
 
 public class RulebookNotFoundException extends Exception {
 

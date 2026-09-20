@@ -1,5 +1,7 @@
 package com.tracefinder.rulebook;
 
+import com.tracefinder.RulebookNotFoundException;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
