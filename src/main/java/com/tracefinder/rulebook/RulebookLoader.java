@@ -1,6 +1,6 @@
 package com.tracefinder.rulebook;
 
-import com.tracefinder.RulebookNotFoundException;
+import com.tracefinder.RulebookException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,8 +24,7 @@ public class RulebookLoader {
 
         String header = lines.get(0).trim();
         if (!header.equals(EXPECTED_HEADER)) {
-            throw new RulebookFormatException(
-                    "Rulebook header must be \"" + EXPECTED_HEADER + "\", found: \"" + header + "\"");
+            throw new InvalidRulebookHeaderException(EXPECTED_HEADER, header);
         }
 
         Map<String, Integer> scoresByLevel = new LinkedHashMap<>();
@@ -40,22 +39,32 @@ public class RulebookLoader {
 
             String[] columns = line.split(",", -1);
             if (columns.length != EXPECTED_COLUMN_COUNT) {
-                throw new RulebookFormatException(
-                        "Rulebook line " + lineNumber + " does not have "
-                                + EXPECTED_COLUMN_COUNT + " columns: \"" + line + "\"");
+                throw new InvalidColumnCountException(lineNumber, EXPECTED_COLUMN_COUNT, line);
             }
 
             String level = columns[0].trim();
-            String scoreText = columns[1].trim();
 
+            if (level.isEmpty()) {
+                throw new BlankRulebookLevelException(lineNumber, line);
+            }
+
+
+            String scoreText = columns[1].trim();
             int score;
             try {
                 score = Integer.parseInt(scoreText);
             } catch (NumberFormatException e) {
-                throw new RulebookFormatException(
-                        "Rulebook line " + lineNumber + " has a non-numeric severity_score: \""
-                                + scoreText + "\"");
+                throw new NonNumericSeverityScoreException(lineNumber, scoreText);
             }
+
+            if (score <= 0) {
+                throw new NonPositiveSeverityScoreException(lineNumber, score);
+            }
+
+            if (scoresByLevel.containsKey(level)) {
+                throw new DuplicateRulebookLevelException(lineNumber, level);
+            }
+
 
             scoresByLevel.put(level, score);
         }
@@ -65,7 +74,7 @@ public class RulebookLoader {
 
 
     public Map<String, Integer> loadFromFile(Path path)
-            throws IOException, RulebookNotFoundException, RulebookFormatException {
+            throws IOException, RulebookException {
 
         try {
             List<String> lines = Files.readAllLines(path);

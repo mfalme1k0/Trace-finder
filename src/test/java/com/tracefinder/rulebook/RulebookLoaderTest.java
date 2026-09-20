@@ -37,7 +37,7 @@ class RulebookLoaderTest {
                 "INFO,1"
         );
 
-        assertThrows(RulebookFormatException.class, () -> loader.parse(lines));
+        assertThrows(InvalidRulebookHeaderException.class, () -> loader.parse(lines));
     }
 
     @Test
@@ -47,7 +47,7 @@ class RulebookLoaderTest {
                 "INFO,1,extra"
         );
 
-        assertThrows(RulebookFormatException.class, () -> loader.parse(lines));
+        assertThrows(InvalidColumnCountException.class, () -> loader.parse(lines));
     }
 
     @Test
@@ -57,12 +57,53 @@ class RulebookLoaderTest {
                 "INFO,high" // not a number
         );
 
-        assertThrows(RulebookFormatException.class, () -> loader.parse(lines));
+        assertThrows(NonNumericSeverityScoreException.class, () -> loader.parse(lines));
     }
 
     @Test
     void emptyFileThrows() {
-        assertThrows(RulebookFormatException.class, () -> loader.parse(List.of()));
+        assertThrows(RulebookIsEmptyException.class, () -> loader.parse(List.of()));
+    }
+
+    @Test
+    void blankLevelThrows() {
+        List<String> lines = List.of(
+                "level,severity_score",
+                ",5"
+        );
+
+        assertThrows(BlankRulebookLevelException.class, () -> loader.parse(lines));
+    }
+
+    @Test
+    void nonPositiveScoreThrows() {
+        List<String> lines = List.of(
+                "level,severity_score",
+                "INFO,0"
+        );
+
+        assertThrows(NonPositiveSeverityScoreException.class, () -> loader.parse(lines));
+    }
+
+    @Test
+    void negativeScoreThrows() {
+        List<String> lines = List.of(
+                "level,severity_score",
+                "INFO,-1"
+        );
+
+        assertThrows(NonPositiveSeverityScoreException.class, () -> loader.parse(lines));
+    }
+
+    @Test
+    void duplicateLevelThrows() {
+        List<String> lines = List.of(
+                "level,severity_score",
+                "WARN,3",
+                "WARN,7"
+        );
+
+        assertThrows(DuplicateRulebookLevelException.class, () -> loader.parse(lines));
     }
 
     @Test

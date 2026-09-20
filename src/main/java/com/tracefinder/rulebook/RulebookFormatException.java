@@ -1,7 +1,9 @@
 package com.tracefinder.rulebook;
 
 
-public class RulebookFormatException extends Exception {
+import com.tracefinder.RulebookException;
+
+public class RulebookFormatException extends RulebookException {
     public RulebookFormatException(String message) {
         super(message);
     }

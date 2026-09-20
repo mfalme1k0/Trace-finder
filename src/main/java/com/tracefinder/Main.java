@@ -88,24 +88,9 @@ public class Main {
         try {
             return new RulebookLoader().loadFromFile(rulebookPath);
 
-        } catch (RulebookNotFoundException e) {
+        } catch (RulebookException | IOException e) {
             throw new FatalErrorException(
-                    "Rulebook file not found '" + rulebookPath + "'"
-            );
-
-        } catch (RulebookIsEmptyException e) {
-            throw new FatalErrorException(
-                    "Rulebook '" + rulebookPath + "' is empty"
-            );
-
-        } catch (RulebookFormatException e) {
-            throw new FatalErrorException(
-                    "Invalid rulebook '" + rulebookPath + "': " + e.getMessage()
-            );
-
-        } catch (IOException e) {
-            throw new FatalErrorException(
-                    "Could not read rulebook file '" + rulebookPath + "': " + e.getMessage()
+                    "Could not load rulebook '" + rulebookPath + "': " + e.getMessage()
             );
         }
     }
