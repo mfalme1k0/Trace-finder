@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogAnalyzer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Trace-finder</a> &gt; <a href="index.source.html" class="el_package">com.tracefinder.analysis</a> &gt; <span class="el_source">LogAnalyzer.java</span></div><h1>LogAnalyzer.java</h1><pre class="source lang-java linenums">package com.tracefinder.analysis;
+
+import com.tracefinder.model.LogEntry;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+<span class="fc" id="L14">public class LogAnalyzer {</span>
+
+    private static final int FLAG_THRESHOLD = 3;
+
+    public Findings analyze(List&lt;LogEntry&gt; entries, Map&lt;String, Integer&gt; rulebook) {
+        // Seed the summary with every level the rulebook defines, at 0,
+        // so a level with no matching entries still shows up in the report.
+<span class="fc" id="L21">        Map&lt;String, Integer&gt; activitySummary = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L22" title="All 2 branches covered.">        for (String level : rulebook.keySet()) {</span>
+<span class="fc" id="L23">            activitySummary.put(level, 0);</span>
+<span class="fc" id="L24">        }</span>
+
+<span class="fc" id="L26">        List&lt;LogEntry&gt; flagged = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L27">        List&lt;UnknownPattern&gt; unknownPatterns = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L28">        Map&lt;String, Integer&gt; totalCountByIp = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L29">        Set&lt;String&gt; suspiciousIps = new HashSet&lt;&gt;();</span>
+
+<span class="fc bfc" id="L31" title="All 2 branches covered.">        for (LogEntry entry : entries) {</span>
+            // Every cleanly parsed entry counts toward its IP's total,
+            // known level or not.
+<span class="fc" id="L34">            totalCountByIp.merge(entry.getSourceIp(), 1, Integer::sum);</span>
+
+<span class="fc" id="L36">            Integer score = rulebook.get(entry.getLevel()); // exact match, case-sensitive</span>
+
+<span class="fc bfc" id="L38" title="All 2 branches covered.">            if (score == null) {</span>
+<span class="fc" id="L39">                unknownPatterns.add(new UnknownPattern(entry.getLineNumber(), entry.getRawLine()));</span>
+<span class="fc" id="L40">                continue;</span>
+            }
+
+<span class="fc" id="L43">            activitySummary.merge(entry.getLevel(), 1, Integer::sum);</span>
+
+<span class="fc bfc" id="L45" title="All 2 branches covered.">            if (score &gt;= FLAG_THRESHOLD) {</span>
+<span class="fc" id="L46">                flagged.add(entry);</span>
+<span class="fc" id="L47">                suspiciousIps.add(entry.getSourceIp());</span>
+            }
+<span class="fc" id="L49">        }</span>
+
+<span class="fc" id="L51">        flagged.sort(Comparator.comparingInt((LogEntry e) -&gt; rulebook.get(e.getLevel())).reversed());</span>
+
+<span class="fc" id="L53">        List&lt;IpActivity&gt; suspiciousIpActivity = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        for (String ip : suspiciousIps) {</span>
+<span class="fc" id="L55">            suspiciousIpActivity.add(new IpActivity(ip, totalCountByIp.get(ip)));</span>
+<span class="fc" id="L56">        }</span>
+<span class="fc" id="L57">        suspiciousIpActivity.sort(Comparator.comparingInt(IpActivity::getEntryCount).reversed());</span>
+
+<span class="fc" id="L59">        unknownPatterns.sort(Comparator.comparingInt(UnknownPattern::getLineNumber));</span>
+
+<span class="fc" id="L61">        return new Findings(activitySummary, flagged, suspiciousIpActivity, unknownPatterns);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
