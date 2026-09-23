@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Findings.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Trace-finder</a> &gt; <a href="index.source.html" class="el_package">com.tracefinder.analysis</a> &gt; <span class="el_source">Findings.java</span></div><h1>Findings.java</h1><pre class="source lang-java linenums">package com.tracefinder.analysis;
+
+import com.tracefinder.model.LogEntry;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * The four findings produced by analysis. One object, four fields —
+ * same &quot;bundle multiple outputs&quot; pattern as ParseResult.
+ */
+public class Findings {
+    private final Map&lt;String, Integer&gt; activitySummary; // level -&gt; count, in rulebook order
+    private final List&lt;LogEntry&gt; flaggedEntries;         // sorted by severity, highest first
+    private final List&lt;IpActivity&gt; suspiciousIps;        // sorted by entry count, highest first
+    private final List&lt;UnknownPattern&gt; unknownPatterns;  // sorted by line number, ascending
+
+    public Findings(Map&lt;String, Integer&gt; activitySummary,
+                    List&lt;LogEntry&gt; flaggedEntries,
+                    List&lt;IpActivity&gt; suspiciousIps,
+<span class="fc" id="L21">                    List&lt;UnknownPattern&gt; unknownPatterns) {</span>
+<span class="fc" id="L22">        this.activitySummary = activitySummary;</span>
+<span class="fc" id="L23">        this.flaggedEntries = flaggedEntries;</span>
+<span class="fc" id="L24">        this.suspiciousIps = suspiciousIps;</span>
+<span class="fc" id="L25">        this.unknownPatterns = unknownPatterns;</span>
+<span class="fc" id="L26">    }</span>
+
+<span class="fc" id="L28">    public Map&lt;String, Integer&gt; getActivitySummary() { return activitySummary; }</span>
+<span class="fc" id="L29">    public List&lt;LogEntry&gt; getFlaggedEntries() { return flaggedEntries; }</span>
+<span class="fc" id="L30">    public List&lt;IpActivity&gt; getSuspiciousIps() { return suspiciousIps; }</span>
+<span class="fc" id="L31">    public List&lt;UnknownPattern&gt; getUnknownPatterns() { return unknownPatterns; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
