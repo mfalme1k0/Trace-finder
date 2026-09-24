@@ -4,6 +4,7 @@ import com.tracefinder.analysis.Findings;
 import com.tracefinder.analysis.LogAnalyzer;
 import com.tracefinder.analysis.TimeWindow;
 import com.tracefinder.analysis.TimeWindowFilter;
+import com.tracefinder.exception.*;
 import com.tracefinder.model.LogEntry;
 import com.tracefinder.model.ParseResult;
 import com.tracefinder.parser.LogParser;

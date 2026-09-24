@@ -1,4 +1,4 @@
-package com.tracefinder.parser;
+package com.tracefinder.exception;
 
 public class LogFileNotFoundException extends LogFileException {
     public LogFileNotFoundException(String path) {

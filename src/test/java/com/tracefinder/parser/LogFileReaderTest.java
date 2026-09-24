@@ -1,6 +1,9 @@
 package com.tracefinder.parser;
 
 import com.tracefinder.FileLimits;
+import com.tracefinder.exception.LogFileNotARegularFileException;
+import com.tracefinder.exception.LogFileNotFoundException;
+import com.tracefinder.exception.LogFileTooLargeException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

@@ -1,4 +1,4 @@
-package com.tracefinder.parser;
+package com.tracefinder.exception;
 
 public class LogFileNotARegularFileException extends LogFileException {
     public LogFileNotARegularFileException(String path) {

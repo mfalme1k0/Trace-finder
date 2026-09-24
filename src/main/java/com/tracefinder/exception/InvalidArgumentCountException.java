@@ -1,4 +1,4 @@
-package com.tracefinder;
+package com.tracefinder.exception;
 
 public class InvalidArgumentCountException extends FatalErrorException {
     public InvalidArgumentCountException(int actualCount) {

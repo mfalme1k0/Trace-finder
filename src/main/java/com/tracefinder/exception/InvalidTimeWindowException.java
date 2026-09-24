@@ -1,4 +1,4 @@
-package com.tracefinder;
+package com.tracefinder.exception;
 
 public class InvalidTimeWindowException extends FatalErrorException {
     public InvalidTimeWindowException(String startArg, String endArg) {

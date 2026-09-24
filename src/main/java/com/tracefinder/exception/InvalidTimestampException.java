@@ -1,4 +1,4 @@
-package com.tracefinder;
+package com.tracefinder.exception;
 
 public class InvalidTimestampException extends FatalErrorException {
     public InvalidTimestampException(String label, String value) {

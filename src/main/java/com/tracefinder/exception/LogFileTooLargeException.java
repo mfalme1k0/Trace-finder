@@ -1,4 +1,4 @@
-package com.tracefinder.parser;
+package com.tracefinder.exception;
 
 public class LogFileTooLargeException extends LogFileException {
     public LogFileTooLargeException(String path, long actualBytes, long limitBytes) {

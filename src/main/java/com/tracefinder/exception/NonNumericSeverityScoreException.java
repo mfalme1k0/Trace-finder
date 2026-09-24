@@ -1,4 +1,4 @@
-package com.tracefinder.rulebook;
+package com.tracefinder.exception;
 
 public class NonNumericSeverityScoreException extends RulebookFormatException {
     public NonNumericSeverityScoreException(int lineNumber, String scoreText) {

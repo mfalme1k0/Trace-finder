@@ -1,4 +1,4 @@
-package com.tracefinder.rulebook;
+package com.tracefinder.exception;
 
 public class NonPositiveSeverityScoreException extends RulebookFormatException {
     public NonPositiveSeverityScoreException(int lineNumber, int score) {

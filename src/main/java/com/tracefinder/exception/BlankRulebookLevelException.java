@@ -1,4 +1,4 @@
-package com.tracefinder.rulebook;
+package com.tracefinder.exception;
 
 public class BlankRulebookLevelException extends RulebookFormatException {
     public BlankRulebookLevelException(int lineNumber, String line) {

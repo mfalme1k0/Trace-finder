@@ -1,4 +1,4 @@
-package com.tracefinder.parser;
+package com.tracefinder.exception;
 
 public class InvalidUtf8Exception extends LogFileException {
     public InvalidUtf8Exception(long approxByteOffset) {

@@ -1,4 +1,4 @@
-package com.tracefinder.rulebook;
+package com.tracefinder.exception;
 
 public class DuplicateRulebookLevelException extends RulebookFormatException {
     public DuplicateRulebookLevelException(int lineNumber, String level) {

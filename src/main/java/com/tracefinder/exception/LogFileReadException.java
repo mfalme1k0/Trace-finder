@@ -1,4 +1,4 @@
-package com.tracefinder;
+package com.tracefinder.exception;
 
 import java.nio.file.Path;
 

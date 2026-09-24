@@ -1,4 +1,4 @@
-package com.tracefinder.rulebook;
+package com.tracefinder.exception;
 
 public class InvalidColumnCountException extends RulebookFormatException {
     public InvalidColumnCountException(int lineNumber, int expectedCount, String line) {

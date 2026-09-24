@@ -1,6 +1,7 @@
 package com.tracefinder.parser;
 
 import com.tracefinder.FileLimits;
+import com.tracefinder.exception.InvalidUtf8Exception;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

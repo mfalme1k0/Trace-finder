@@ -1,6 +1,10 @@
 package com.tracefinder.parser;
 
 import com.tracefinder.FileLimits;
+import com.tracefinder.exception.LogFileException;
+import com.tracefinder.exception.LogFileNotARegularFileException;
+import com.tracefinder.exception.LogFileNotFoundException;
+import com.tracefinder.exception.LogFileTooLargeException;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
