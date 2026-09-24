@@ -4,6 +4,7 @@ import com.tracefinder.model.LogEntry;
 import com.tracefinder.model.MalformedLine;
 import com.tracefinder.model.ParseResult;
 
+import com.tracefinder.FieldCleaner;
 import com.tracefinder.TimestampFormats;
 
 import java.io.IOException;
@@ -76,8 +77,8 @@ public class LogParser {
         }
 
         String timestampRaw = fields[0].trim();
-        String level = fields[1].trim();
-        String sourceIp = fields[2].trim();
+        String level = FieldCleaner.clean(fields[1]);
+        String sourceIp = FieldCleaner.clean(fields[2]);
         String target = fields[3].trim();
         String action = fields[4].trim();
 
