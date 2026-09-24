@@ -65,12 +65,50 @@ ALERT,9
 
 Unlike the log file, **the rulebook must be entirely valid or the tool refuses to run.** A broken rulebook means every scoring decision downstream would be unreliable, so there's no safe way to partially trust it.
 
-Matching a log entry's level against the rulebook is **exact and case-sensitive** — `info` does not match `INFO`.
+Matching a log entry's level against the rulebook is **exact and case-sensitive** — `info` does not match `INFO`. Matching happens on *cleaned* values on both sides (see [Field cleaning](#field-cleaning) below) — so it's exact and case-sensitive, but tolerant of invisible characters and surrounding whitespace, which would otherwise make an entry silently fail to match a level that's really the same thing to a person reading it.
+
+## Field cleaning
+
+Before a field is used for matching, grouping, or duplicate-checking, it's cleaned: hidden/zero-width characters are stripped from anywhere in the string (not just the ends), then ordinary leading/trailing whitespace is trimmed. This applies to a log entry's **level** and **source IP**, and to a rulebook row's **level** — the fields this tool actually compares, groups, or counts by. `target` and `action` are trimmed but not cleaned, since nothing matches or groups on them.
+
+**Why this matters:** an invisible character can make one value look like two. For example, `192.168.1.45` appearing on several lines, with some occurrences containing an invisible zero-width space, would otherwise be split across two rows in the report:
+
+```
+192.168.1.45: 6 entries
+192.168.1.45: 3 entries
+```
+
+instead of correctly combining into one:
+
+```
+192.168.1.45: 9 entries
+```
+
+**The exact characters removed** (defined once, in `FieldCleaner.java`):
+
+| Character | Name |
+|---|---|
+| U+200B | ZERO WIDTH SPACE |
+| U+200C | ZERO WIDTH NON-JOINER |
+| U+200D | ZERO WIDTH JOINER |
+| U+FEFF | ZERO WIDTH NO-BREAK SPACE (byte-order mark) |
+| U+2060 | WORD JOINER |
+| U+00AD | SOFT HYPHEN |
+| U+200E / U+200F | LEFT-TO-RIGHT MARK / RIGHT-TO-LEFT MARK |
+| U+061C | ARABIC LETTER MARK |
+
+This is a fixed, named list rather than "every Unicode format character." Stripping the entire Unicode "format" category would also remove characters that have real, visible layout effects in some contexts (e.g. bidi embedding/override controls) — a different and riskier change than removing characters that are invisible everywhere, regardless of surrounding text.
+
+**Cleaned values are used for:** matching a log entry's level against the rulebook, grouping entries by IP, counting toward Activity Summary, and detecting duplicate rulebook levels — two levels that are only equal *after* cleaning (e.g. `WARN` and `WA` + zero-width-space + `RN`) are treated as duplicates, and the rulebook is refused.
+
+**Original values are always what's displayed.** Flagged Entries, Unknown Patterns, and Malformed Lines all show the untouched original line — hidden characters and all — never the cleaned version. Only the *decision* (does this match, does this count as the same level) uses cleaned values; the report never silently rewrites what was actually in the input.
 
 Before the rulebook is read at all, the tool refuses it outright (fatal, no report written) if:
 - the path doesn't exist
 - the path isn't a regular file (e.g. it's a directory)
 - the file is larger than the rulebook size limit
+
+Once past those checks, the file's bytes are read and decoded as strict UTF-8 before any row is parsed — if that decode fails, the tool refuses the rulebook the same way (fatal, no report written), even though this happens fractionally after the size check rather than before any reading at all. (The rulebook is small enough, under its own size limit, that reading it whole for this check doesn't need the streaming approach the log file uses — see [Input limits](#input-limits).)
 
 ## Input limits
 
@@ -110,8 +148,8 @@ A plain-text file with five sections, always in this order, always present even 
 - wrong number of command-line arguments
 - rulebook or log file path doesn't exist, or isn't a regular file (e.g. it's a directory)
 - rulebook or log file exceeds its size limit
-- rulebook file is invalid CSV (missing/wrong header, wrong column count, blank level, non-numeric or non-positive score, a level defined twice)
-- log file contains invalid UTF-8 anywhere — including inside the discarded remainder of an over-long line
+- rulebook file is invalid CSV (missing/wrong header, wrong column count, blank level after cleaning, non-numeric or negative score, a level defined twice — including two levels equal only after cleaning)
+- rulebook or log file contains invalid UTF-8 anywhere — for the log file, including inside the discarded remainder of an over-long line
 - report path can't be written to
 
 **Recorded and skipped, tool keeps going:**
@@ -135,7 +173,7 @@ rules.csv ──► RulebookLoader ─► scores ┘
 | `com.tracefinder.rulebook` | `RulebookLoader` — reads `rules.csv` into a level → severity_score map. Knows nothing about the log file. |
 | `com.tracefinder.analysis` | `LogAnalyzer` — the only piece that combines parsed entries with the rulebook to produce `Findings` (the four report sections' worth of data). |
 | `com.tracefinder.report` | `ReportFormatter` (text-in, text-out) and `ReportWriter` (writes text to disk) |
-| `com.tracefinder` (root) | `Main` — orchestrates the pipeline. `FatalErrorException` — abstract root of every condition that stops the tool, with one concrete subclass per specific cause (e.g. `InvalidArgumentCountException`, `RulebookLoadFailedException`, `LogFileReadException`) rather than one generic exception for everything. `RulebookException` — likewise the abstract root for everything that can go wrong loading a rulebook, with a concrete subclass per case (missing file, not a regular file, too large, empty, bad header, bad column count, blank level, non-numeric or non-positive score, duplicate level). `FileLimits` — the three size limits, defined once, used everywhere they're checked. |
+| `com.tracefinder` (root) | `Main` — orchestrates the pipeline. `FatalErrorException` — abstract root of every condition that stops the tool, with one concrete subclass per specific cause (e.g. `InvalidArgumentCountException`, `RulebookLoadFailedException`, `LogFileReadException`) rather than one generic exception for everything. `RulebookException` — likewise the abstract root for everything that can go wrong loading a rulebook, with a concrete subclass per case (missing file, not a regular file, too large, invalid UTF-8, empty, bad header, bad column count, blank level, non-numeric or negative score, duplicate level). `FieldCleaner` — strips hidden/zero-width characters and surrounding whitespace from a field before it's matched, grouped, or compared; see [Field cleaning](#field-cleaning). `FileLimits` — the three size limits, defined once, used everywhere they're checked. |
 
 Every class above except `Main` splits its **logic** (pure, testable, no file access) from its **file I/O** (thin, untested wrapper) — e.g. `RulebookLoader.parse(lines)` vs. `RulebookLoader.loadFromFile(path)`. This is what makes the test suite fast and independent of the filesystem.
 
@@ -149,7 +187,41 @@ Runs the full JUnit 5 suite, including the exception-path tests for both the fat
 
 ## Hostile input files
 
-> **Status: not yet built.** The size limits, streaming, and UTF-8 validation described above are implemented and unit-tested, but the project also calls for dedicated hostile *files* — real, adversarial inputs a reviewer can run the tool against directly — one per attack surface (whole log file, one log line, one field, the rulebook). Those files, this section's results table, and the demonstrations they support haven't been built yet. This section will be filled in once they are, in the same format as the rest of this README: each file's name, what it attacks, and its expected result.
+Nine files in `hostile-inputs/`, one per attack surface called for (whole log file, one log line, one field, the rulebook), each named for what it attacks. Run any of them against the tool directly to see the described result. Files attacking the log side are paired with `sample-data/rules.csv`; files attacking the rulebook side are paired with `sample-data/logs.txt`.
+
+```
+mvn clean package
+java -jar target/tracefinder-1.0-SNAPSHOT.jar <log-file> <rulebook-file> report.txt
+```
+
+### Whole log file
+
+| File | Attacks | Expected result |
+|---|---|---|
+| `log-file-oversized.log` | Log file size limit (10,486,788 bytes — 1,028 over the 10 MB limit) | Refused before any content is read. `Error: Could not read log file '...': Log file '...' is 10486788 bytes, exceeding the 10485760-byte limit`. Exit code 1. No `report.txt` written. |
+| `log-file-truncated-utf8-at-eof.log` | Whole-file UTF-8 validity (ends on `0xC3`, the lead byte of a 2-byte sequence, with nothing after it) | Refused. `Error: Could not read log file '...': Log file contains invalid UTF-8 (detected while reading around byte offset 100)`. Exit code 1. No report written, even though the file's first line is perfectly valid. |
+
+### One log line
+
+| File | Attacks | Expected result |
+|---|---|---|
+| `log-line-too-long.log` | The 4,096-byte single-line limit (its middle line is 5,044 bytes — 948 over) | **Not fatal.** The tool runs to completion and writes a report. Line 1 (`WARN`) and line 3 (`INFO`) parse normally. Line 2 is recorded in Malformed Lines as `Line 2: <first 200 bytes>... [truncated, line exceeded 4096-byte limit]` — its full content is never held in memory. Because line 2 never became a real entry, `ALERT` shows `0` in Activity Summary despite being the level that line was using. |
+
+### One field
+
+| File | Attacks | Expected result |
+|---|---|---|
+| `log-field-delimiter-injection.log` | A field containing its own `\|` (line 2's target/action fields collapse into one field containing an extra `\|`, making 6 pieces instead of 5) | **Not fatal.** Lines 1 and 3 parse normally. Line 2 is recorded in Malformed Lines with its original content unchanged. Suspicious Activity by IP shows `203.0.113.42: 1` — only line 1's successfully-parsed entry counts; the malformed line, despite sharing the same IP, never becomes an entry and so is never counted. |
+| `log-field-hidden-characters.log` | Field cleaning — line 2's source IP has a zero-width space (`U+200B`) between `203.0.113` and `.42` | **Not fatal.** Both lines parse as `ALERT` entries (score 9, both flagged). Suspicious Activity by IP shows a single combined row, `203.0.113.42: 2`, not two separate one-entry rows — this is the exact scenario described in [Field cleaning](#field-cleaning). Flagged Entries still shows both original lines verbatim, hidden character included, since display always uses the uncleaned original text. |
+
+### The rulebook
+
+| File | Attacks | Expected result |
+|---|---|---|
+| `rulebook-oversized.csv` | Rulebook size limit (103,431 bytes — 1,031 over the 100 KB limit) | Refused before any content is read. `Error: Could not load rulebook '...': Rulebook '...' is 103431 bytes, exceeding the 102400-byte limit`. Exit code 1. No report written. |
+| `rulebook-duplicate-after-cleaning.csv` | Duplicate-level detection after cleaning (`WARN` on line 2, `WA` + zero-width-space + `RN` on line 3 — the same level once cleaned) | Refused. `Error: Could not load rulebook '...': Rulebook line 3 redefines level "WARN", already defined earlier in the file`. Exit code 1. No report written. |
+| `rulebook-negative-score.csv` | Score validation (`WARN,-3` on line 3) | Refused. `Error: Could not load rulebook '...': Rulebook line 3 has a negative severity_score: -3`. Exit code 1. No report written. Note: a rulebook with `WARN,0` instead would **not** be refused — `0` is a valid score (see [Field cleaning](#field-cleaning) / Input formats above). |
+| `rulebook-invalid-utf8.csv` | Rulebook UTF-8 validity (a raw `0x80` byte — an invalid lone continuation byte — inserted between `WA` and `RN` on line 3) | Refused. `Error: Could not load rulebook '...': Rulebook '...' contains invalid UTF-8`. Exit code 1. No report written. |
 
 ## Sample inputs
 

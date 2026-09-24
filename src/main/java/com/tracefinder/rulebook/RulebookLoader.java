@@ -1,8 +1,17 @@
 package com.tracefinder.rulebook;
 
 import com.tracefinder.exception.*;
+import com.tracefinder.FileLimits;
+import com.tracefinder.FieldCleaner;
+import com.tracefinder.exception.RulebookInvalidUtf8Exception;
+import com.tracefinder.exception.RulebookNotFoundException;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -42,7 +51,7 @@ public class RulebookLoader {
                 throw new InvalidColumnCountException(lineNumber, EXPECTED_COLUMN_COUNT, line);
             }
 
-            String level = columns[0].trim();
+            String level = FieldCleaner.clean(columns[0]);
 
             if (level.isEmpty()) {
                 throw new BlankRulebookLevelException(lineNumber, line);
@@ -57,8 +66,8 @@ public class RulebookLoader {
                 throw new NonNumericSeverityScoreException(lineNumber, scoreText);
             }
 
-            if (score <= 0) {
-                throw new NonPositiveSeverityScoreException(lineNumber, score);
+            if (score < 0) {
+                throw new NegativeSeverityScoreException(lineNumber, score);
             }
 
             if (scoresByLevel.containsKey(level)) {
@@ -76,15 +85,42 @@ public class RulebookLoader {
     public Map<String, Integer> loadFromFile(Path path)
             throws IOException, RulebookException {
 
-        try {
-            List<String> lines = Files.readAllLines(path);
-            return parse(lines);
+        if (!Files.exists(path)) {
+            throw new RulebookNotFoundException("Rulebook file not found: " + path);
+        }
 
+        if (!Files.isRegularFile(path)) {
+            throw new RulebookNotARegularFileException(path.toString());
+        }
+
+        long sizeInBytes = Files.size(path);
+        if (sizeInBytes > FileLimits.MAX_RULEBOOK_FILE_BYTES) {
+            throw new RulebookTooLargeException(path.toString(), sizeInBytes, FileLimits.MAX_RULEBOOK_FILE_BYTES);
+        }
+
+        byte[] bytes;
+        try {
+            bytes = Files.readAllBytes(path);
         } catch (NoSuchFileException e) {
             throw new RulebookNotFoundException(
                     "Rulebook file not found: " + path
             );
+        }
 
+        String content = decodeStrictUtf8(bytes, path);
+        List<String> lines = content.lines().toList();
+
+        return parse(lines);
+    }
+
+    private String decodeStrictUtf8(byte[] bytes, Path path) throws RulebookInvalidUtf8Exception {
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        try {
+            return decoder.decode(ByteBuffer.wrap(bytes)).toString();
+        } catch (CharacterCodingException e) {
+            throw new RulebookInvalidUtf8Exception(path.toString());
         }
     }
 }
