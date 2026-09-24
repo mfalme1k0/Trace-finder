@@ -1,0 +1,3 @@
+2024-03-15 02:14:08 | INFO | 203.0.113.42 | /login | success
+2024-03-15 02:14:20 | WARN | 203.0.113.42 | /admin | delete | everything
+2024-03-15 02:14:33 | ALERT | 203.0.113.42 | /etc/passwd | read
