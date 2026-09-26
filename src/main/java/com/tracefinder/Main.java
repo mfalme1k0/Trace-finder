@@ -13,7 +13,6 @@ import com.tracefinder.report.ReportWriter;
 import com.tracefinder.rulebook.*;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -32,7 +31,7 @@ public class Main {
         }
     }
 
-    private static void run(String[] args) throws FatalErrorException {
+    static void run(String[] args) throws FatalErrorException {
         if (args.length != 3 && args.length != 5) {
             throw new InvalidArgumentCountException(args.length);
         }
@@ -43,9 +42,7 @@ public class Main {
         TimeWindow window = (args.length == 5) ? parseWindow(args[3], args[4]) : null;
 
         Map<String, Integer> rulebook = loadRulebook(rulebookPath);
-        List<String> logLines = readLogFile(logPath);
-
-        ParseResult parseResult = new LogParser().parse(logLines);
+        ParseResult parseResult = readLogFile(logPath);
         List<LogEntry> entriesInWindow = new TimeWindowFilter().filter(parseResult.getEntries(), window);
         Findings findings = new LogAnalyzer().analyze(entriesInWindow, rulebook);
 
@@ -88,10 +85,11 @@ public class Main {
         }
     }
 
-    private static List<String> readLogFile(Path logPath) throws FatalErrorException {
+    private static ParseResult readLogFile(Path logPath) throws FatalErrorException {
         try {
-            return Files.readAllLines(logPath);
-        } catch (IOException e) {
+
+            return new LogParser().parseFile(logPath);
+        } catch (LogFileException | IOException e) {
             throw new LogFileReadException(logPath, e);
         }
     }

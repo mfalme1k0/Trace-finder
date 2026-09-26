@@ -128,7 +128,7 @@ TraceFinder enforces three size limits, all defined together in `FileLimits.java
 
 A file **exactly** at its size limit is accepted; one byte over is refused. A line **exactly** at its byte limit is accepted; one byte over is treated as malformed (see below).
 
-**The short form used for an over-long line:** the first 200 bytes of the line, decoded to text, followed by `... [truncated, line exceeded 4096-byte limit]`. Only those 200 bytes are ever held in memory for such a line — the rest is read and discarded (still checked for valid UTF-8 as it goes, just never stored), which is what keeps a single pathological line from growing memory use without bound.
+**The short form used for an over-long line:** the first 200 bytes of the line, decoded to text, followed by `... [truncated, line exceeded 4096-byte limit]`. Up to the 4,096-byte per-line limit is buffered while a line is still being read (so the limit, not the 200-byte preview, is the true memory bound per line); once a line is confirmed over-long, only its first 200 bytes are kept for the preview and the rest is read and discarded (still checked for valid UTF-8 as it goes, just never stored). Either way, memory use per line is capped at the 4 KB limit rather than growing without bound — that cap is what a single pathological line can never exceed.
 
 ## Output: the report
 
@@ -155,6 +155,10 @@ A plain-text file with five sections, always in this order, always present even 
 **Recorded and skipped, tool keeps going:**
 - malformed log lines (including over-long ones — recorded with a shortened preview, see [Input limits](#input-limits))
 - log levels not found in the rulebook ("unknown patterns")
+
+## A note on how the log file is actually read
+
+`Main` reads the log file through `LogParser.parseFile(path)`, which runs the "refuse before reading" checks in `LogFileReader` and then streams the file through `Utf8LineReader` — the same bounded-memory path described in [Input limits](#input-limits) above. An earlier version of `Main` called `Files.readAllLines` directly instead, which loaded the whole file into memory unconditionally: the log-file size limit, the per-line byte limit, and the incremental UTF-8 check were all defined and unit-tested correctly, but nothing on the `Main` code path actually invoked them, so none of the size/line-length refusals in this README happened in practice — a sufficiently large or pathological file would be read in full and could exhaust the heap. `MainTest` (in `src/test/java/com/tracefinder/MainTest.java`) exercises `Main.run` end-to-end specifically so this class of "the pieces are tested but the wiring isn't" bug can't regress silently again.
 
 ## Architecture
 
@@ -187,7 +191,7 @@ Runs the full JUnit 5 suite, including the exception-path tests for both the fat
 
 ## Hostile input files
 
-Nine files in `hostile-inputs/`, one per attack surface called for (whole log file, one log line, one field, the rulebook), each named for what it attacks. Run any of them against the tool directly to see the described result. Files attacking the log side are paired with `sample-data/rules.csv`; files attacking the rulebook side are paired with `sample-data/logs.txt`.
+Nine files in `hostile-inputs/`, one per attack surface called for (whole log file, one log line, one field, the rulebook), each named for what it attacks — the file name always matches the table row below exactly. Run any of them against the tool directly to see the described result; every result below was captured by actually running the built jar against the actual file, not written from the design intent alone. Files attacking the log side are paired with `sample-data/rules.csv`; files attacking the rulebook side are paired with `sample-data/logs.txt`.
 
 ```
 mvn clean package
@@ -199,7 +203,7 @@ java -jar target/tracefinder-1.0-SNAPSHOT.jar <log-file> <rulebook-file> report.
 | File | Attacks | Expected result |
 |---|---|---|
 | `log-file-oversized.log` | Log file size limit (10,486,788 bytes — 1,028 over the 10 MB limit) | Refused before any content is read. `Error: Could not read log file '...': Log file '...' is 10486788 bytes, exceeding the 10485760-byte limit`. Exit code 1. No `report.txt` written. |
-| `log-file-truncated-utf8-at-eof.log` | Whole-file UTF-8 validity (ends on `0xC3`, the lead byte of a 2-byte sequence, with nothing after it) | Refused. `Error: Could not read log file '...': Log file contains invalid UTF-8 (detected while reading around byte offset 100)`. Exit code 1. No report written, even though the file's first line is perfectly valid. |
+| `log-file-truncated-utf8-at-eof.log` | Whole-file UTF-8 validity (119-byte file; ends on `0xC3`, the lead byte of a 2-byte sequence, with nothing after it) | Refused. `Error: Could not read log file '...': Log file contains invalid UTF-8 (detected while reading around byte offset 119)`. Exit code 1. No report written, even though the file's first line is perfectly valid. |
 
 ### One log line
 
@@ -211,7 +215,7 @@ java -jar target/tracefinder-1.0-SNAPSHOT.jar <log-file> <rulebook-file> report.
 
 | File | Attacks | Expected result |
 |---|---|---|
-| `log-field-delimiter-injection.log` | A field containing its own `\|` (line 2's target/action fields collapse into one field containing an extra `\|`, making 6 pieces instead of 5) | **Not fatal.** Lines 1 and 3 parse normally. Line 2 is recorded in Malformed Lines with its original content unchanged. Suspicious Activity by IP shows `203.0.113.42: 1` — only line 1's successfully-parsed entry counts; the malformed line, despite sharing the same IP, never becomes an entry and so is never counted. |
+| `log-field-delimiter-injection.log` | A field containing its own `\|` (line 2's target/action fields collapse into one field containing an extra `\|`, making 6 pieces instead of 5) | **Not fatal.** Line 1 (`ALERT`, score 9) parses and is flagged. Line 2 is recorded in Malformed Lines with its original content unchanged. Suspicious Activity by IP shows `203.0.113.42: 1` — only line 1's successfully-parsed entry counts; the malformed line, despite sharing the same IP, never becomes an entry and so is never counted. |
 | `log-field-hidden-characters.log` | Field cleaning — line 2's source IP has a zero-width space (`U+200B`) between `203.0.113` and `.42` | **Not fatal.** Both lines parse as `ALERT` entries (score 9, both flagged). Suspicious Activity by IP shows a single combined row, `203.0.113.42: 2`, not two separate one-entry rows — this is the exact scenario described in [Field cleaning](#field-cleaning). Flagged Entries still shows both original lines verbatim, hidden character included, since display always uses the uncleaned original text. |
 
 ### The rulebook
